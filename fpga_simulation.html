@@ -1135,7 +1135,7 @@
 
             let chartHistory = []; // Store chart values
             let runInterval;
-            const initialDelay = 500; // Default slider value
+            const initialDelay = 1600; // Default slider value
             let currentDelay = initialDelay;
 
             function init() {
@@ -1433,7 +1433,7 @@
                 };
                 chartHistory = []; // Clear chart history
                 document.getElementById('speed-slider').value = 500; // Reset slider position
-                currentDelay = 500;
+                currentDelay = 1600;
                 document.getElementById('speed-val').innerText = (currentDelay / 1000).toFixed(1) + 's';
                 updateMainDisplay(0);
                 updateTickHexDisplay(1); // Reset tick display
@@ -1454,5 +1454,6 @@
         })();
     </script>
 </body>
+
 
 </html>
