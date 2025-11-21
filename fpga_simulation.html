@@ -910,27 +910,143 @@
            RESPONSIVE DESIGN
            ============================================ */
         @media (max-width: 768px) {
+            body {
+                padding: 0.5rem;
+            }
+
             .header {
+                padding: 1.5rem 1rem;
                 flex-direction: column;
+                align-items: center;
                 text-align: center;
+                gap: 1rem;
+            }
+
+            .header-title {
+                min-width: auto;
+                width: 100%;
             }
 
             .header-output {
                 text-align: center;
+                width: 100%;
+                padding-top: 1rem;
+                border-top: 1px solid hsla(0, 0%, 100%, 0.05);
+            }
+
+            .content {
+                padding: 1rem;
+                gap: 1.5rem;
             }
 
             .controls {
                 grid-template-columns: 1fr;
+                /* Stack buttons vertically */
+                gap: 0.75rem;
+            }
+
+            .btn {
+                padding: 1.25rem;
+                /* Larger touch targets */
+            }
+
+            .speed-control {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+                padding: 1.25rem;
+            }
+
+            .slider-container {
+                width: 100%;
             }
 
             .monitor-grid {
                 grid-template-columns: 1fr;
             }
 
+            .code-panel {
+                height: 400px;
+                /* Reduced height for mobile */
+            }
+
             .footer {
                 flex-direction: column;
-                gap: 0.5rem;
+                gap: 0.75rem;
                 text-align: center;
+                padding: 1.5rem;
+            }
+
+            /* Adjust chart for small screens */
+            .chart-container {
+                height: 150px;
+                padding-bottom: 0.5rem;
+            }
+
+            .chart-bar-wrapper {
+                flex: 0 0 30px;
+                /* Thinner bars */
+            }
+
+            /* Scale down 7-segment display for mobile to fit on one line */
+            .hex-displays {
+                gap: 0.25rem;
+                /* Reduce gap */
+            }
+
+            .seven-segment {
+                width: 40px;
+                height: 66px;
+                padding: 4px;
+            }
+
+            /* Adjust segment sizes for smaller display */
+            .seven-segment .seg-a,
+            .seven-segment .seg-d,
+            .seven-segment .seg-g {
+                left: 6px;
+                right: 6px;
+                height: 5px;
+            }
+
+            .seven-segment .seg-a {
+                top: 4px;
+            }
+
+            .seven-segment .seg-d {
+                bottom: 4px;
+            }
+
+            .seven-segment .seg-g {
+                top: 30px;
+            }
+
+            .seven-segment .seg-b,
+            .seven-segment .seg-c,
+            .seven-segment .seg-e,
+            .seven-segment .seg-f {
+                width: 5px;
+                height: 24px;
+            }
+
+            .seven-segment .seg-b {
+                top: 6px;
+                right: 4px;
+            }
+
+            .seven-segment .seg-c {
+                bottom: 6px;
+                right: 4px;
+            }
+
+            .seven-segment .seg-e {
+                bottom: 6px;
+                left: 4px;
+            }
+
+            .seven-segment .seg-f {
+                top: 6px;
+                left: 4px;
             }
         }
     </style>
@@ -1178,10 +1294,14 @@
                     el.className = 'seven-segment';
                     el.id = `hex-${i}`;
                     el.innerHTML = `
-                    <div class="segment seg-a"></div><div class="segment seg-b"></div>
-                    <div class="segment seg-c"></div><div class="segment seg-d"></div>
-                    <div class="segment seg-e"></div><div class="segment seg-f"></div>
-                    <div class="segment seg-g"></div>`;
+                        <div class="segment seg-a"></div>
+                        <div class="segment seg-b"></div>
+                        <div class="segment seg-c"></div>
+                        <div class="segment seg-d"></div>
+                        <div class="segment seg-e"></div>
+                        <div class="segment seg-f"></div>
+                        <div class="segment seg-g"></div>
+                    `;
                     hexContainer.appendChild(el);
                 }
 
@@ -1288,15 +1408,12 @@
 
             function highlightLine(index) {
                 // Remove old highlights
-                document.querySelectorAll('#assembly-code > div').forEach(d => {
-                    d.classList.remove('highlight');
-                });
+                document.querySelectorAll('#assembly-code > div').forEach(d => d.classList.remove('highlight'));
 
                 // Add new highlight
                 const el = document.getElementById(`line-${index}`);
                 if (el) {
                     el.classList.add('highlight');
-
                     // FIX: Use container scroll within the element
                     const container = document.getElementById('code-container');
                     const offset = el.offsetTop - container.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
@@ -1317,6 +1434,7 @@
                 for (let i = 0; i < str.length && i <= 4; i++) {
                     setHex(i, parseInt(str[str.length - 1 - i]));
                 }
+
                 // Set negative sign on HEX4 if necessary and space allows
                 if (isNeg && str.length <= 4) setHex(4, '-');
                 else if (isNeg && str.length === 5) {
@@ -1426,6 +1544,7 @@
 
             function reset() {
                 if (state.isRunning) toggleRun();
+
                 state = {
                     pc: 0, n: 1, acc: 0, r0: 1, r1: 0, r2: 0, r7: 0,
                     seqIndex: 0, lineIndex: 0, tick: 1,
@@ -1450,7 +1569,6 @@
 
             // Initialize the simulation on load
             init();
-
         })();
     </script>
 </body>
