@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>x72 Processor FPGA Hardware Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ============================================
+           CSS RESET & BASE STYLES
+           ============================================ */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Monochrome Black & White Palette */
+            --color-accent-red: hsl(0, 85%, 65%);
+            --color-accent-cyan: hsl(195, 100%, 85%);
+            --color-bg-base: hsl(0, 0%, 6%);
+            --color-glass-tint: hsla(0, 0%, 15%, 0.3);
+            --color-text-primary: hsla(0, 0%, 100%, 0.95);
+            --color-text-secondary: hsla(0, 0%, 100%, 0.65);
+            --color-text-tertiary: hsla(0, 0%, 100%, 0.40);
+            --color-text-dim: hsla(0, 0%, 100%, 0.25);
+
+            /* Timing Functions */
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-bounce: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        body {
+            font-family: -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+            background: var(--color-bg-base);
+            color: var(--color-text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ============================================
+           MINIMALIST BACKGROUND
+           ============================================ */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 30%, hsla(0, 0%, 15%, 0.4) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, hsla(0, 0%, 12%, 0.3) 0%, transparent 50%);
+            animation: gradientShift 20s ease infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+        }
+
+        /* Particle Grid Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle, hsla(0, 0%, 80%, 0.02) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* ============================================
+           GLASS MORPHISM UTILITIES
+           ============================================ */
+        .glass {
+            background: linear-gradient(135deg,
+                    hsla(0, 0%, 18%, 0.4) 0%,
+                    hsla(0, 0%, 10%, 0.3) 100%);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid hsla(0, 0%, 100%, 0.15);
+            box-shadow:
+                0 8px 32px 0 rgba(0, 0, 0, 0.37),
+                inset 0 1px 0 0 hsla(0, 0%, 100%, 0.1);
+            border-radius: 1rem;
+        }
+
+        .glass-nested {
+            background: linear-gradient(135deg,
+                    hsla(0, 0%, 15%, 0.5) 0%,
+                    hsla(0, 0%, 8%, 0.4) 100%);
+            backdrop-filter: blur(16px) saturate(150%);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid hsla(0, 0%, 100%, 0.1);
+            box-shadow:
+                0 4px 16px 0 rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 0 hsla(0, 0%, 100%, 0.08);
+            border-radius: 0.75rem;
+        }
+
+        /* ============================================
+           MAIN CONTAINER
+           ============================================ */
+        .main-container {
+            max-width: 1400px;
+            width: 100%;
+            animation: fadeInUp 0.8s var(--ease-smooth) backwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           HEADER SECTION
+           ============================================ */
+        .header {
+            padding: 2rem;
+            border-bottom: 1px solid hsla(0, 0%, 100%, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .header-title {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .header-title h1 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 85%) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .header-output {
+            text-align: right;
+        }
+
+        .header-output-label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-output-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            color: var(--color-text-primary);
+            text-shadow: 0 0 20px hsla(0, 0%, 100%, 0.3);
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 20px hsla(0, 0%, 100%, 0.3);
+            }
+
+            50% {
+                text-shadow: 0 0 30px hsla(0, 0%, 100%, 0.5);
+            }
+        }
+
+        /* ============================================
+           MAIN CONTENT GRID
+           ============================================ */
+        .content {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================
+           LEFT PANEL - FPGA VISUALS
+           ============================================ */
+        .fpga-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* 7-Segment Display Container */
+        .display-container {
+            position: relative;
+            padding: 2rem;
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.1s backwards;
+        }
+
+        .display-container::before {
+            content: '7-SEGMENT DISPLAY';
+            position: absolute;
+            top: 0.75rem;
+            left: 1.5rem;
+            font-size: 0.625rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            color: var(--color-text-tertiary);
+        }
+
+        .hex-displays {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* 7-Segment Individual Display */
+        .seven-segment {
+            display: inline-block;
+            position: relative;
+            width: 56px;
+            height: 92px;
+            background: linear-gradient(135deg, hsl(0, 0%, 10%) 0%, hsl(0, 0%, 6%) 100%);
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow:
+                inset 0 2px 8px rgba(0, 0, 0, 0.5),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid hsla(0, 0%, 100%, 0.05);
+        }
+
+        .segment {
+            position: absolute;
+            background-color: hsl(0, 0%, 18%);
+            border-radius: 2px;
+            transition: all 0.2s var(--ease-smooth);
+            opacity: 0.2;
+        }
+
+        .segment.on {
+            background-color: var(--color-accent-red);
+            box-shadow:
+                0 0 12px var(--color-accent-red),
+                0 0 24px hsla(0, 85%, 65%, 0.6),
+                inset 0 0 8px hsla(0, 85%, 80%, 0.8);
+            opacity: 1;
+        }
+
+        /* Segment Positioning */
+        .seg-a {
+            top: 6px;
+            left: 10px;
+            right: 10px;
+            height: 7px;
+        }
+
+        .seg-b {
+            top: 10px;
+            right: 6px;
+            height: 34px;
+            width: 7px;
+        }
+
+        .seg-c {
+            bottom: 10px;
+            right: 6px;
+            height: 34px;
+            width: 7px;
+        }
+
+        .seg-d {
+            bottom: 6px;
+            left: 10px;
+            right: 10px;
+            height: 7px;
+        }
+
+        .seg-e {
+            bottom: 10px;
+            left: 6px;
+            height: 34px;
+            width: 7px;
+        }
+
+        .seg-f {
+            top: 10px;
+            left: 6px;
+            height: 34px;
+            width: 7px;
+        }
+
+        .seg-g {
+            top: 43px;
+            left: 10px;
+            right: 10px;
+            height: 7px;
+        }
+
+        .hex-labels {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            margin-top: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.625rem;
+            color: var(--color-text-tertiary);
+            flex-wrap: wrap;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.2s backwards;
+        }
+
+        .btn {
+            font-family: -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.25s var(--ease-bounce);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent, hsla(0, 0%, 100%, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s var(--ease-smooth);
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-step {
+            background: linear-gradient(135deg, hsl(0, 0%, 25%) 0%, hsl(0, 0%, 18%) 100%);
+            color: var(--color-text-primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-run {
+            background: linear-gradient(135deg, var(--color-accent-cyan) 0%, hsl(195, 100%, 75%) 100%);
+            color: hsl(0, 0%, 10%);
+            font-weight: 700;
+            box-shadow: 0 4px 16px hsla(195, 100%, 85%, 0.3);
+        }
+
+        .btn-run.running {
+            background: linear-gradient(135deg, hsl(0, 80%, 60%) 0%, hsl(0, 80%, 50%) 100%);
+            color: white;
+            box-shadow: 0 4px 16px hsla(0, 80%, 60%, 0.4);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, hsl(0, 70%, 55%) 0%, hsl(0, 70%, 45%) 100%);
+            color: white;
+            box-shadow: 0 4px 16px hsla(0, 70%, 55%, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Speed Slider */
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.3s backwards;
+        }
+
+        .speed-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+            white-space: nowrap;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .slider-container span {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: linear-gradient(90deg, hsl(0, 0%, 20%), hsl(0, 0%, 28%));
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, hsl(0, 0%, 90%), hsl(0, 0%, 70%));
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s var(--ease-bounce);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, hsl(0, 0%, 90%), hsl(0, 0%, 70%));
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s var(--ease-bounce);
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .speed-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--color-text-primary);
+            min-width: 3rem;
+            text-align: right;
+        }
+
+        /* ============================================
+           VISUALIZATION PANEL
+           ============================================ */
+        .visualization-panel {
+            padding: 1.5rem;
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.4s backwards;
+        }
+
+        .viz-header {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--color-text-tertiary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Formula Display */
+        .formula-display {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, hsla(0, 0%, 12%, 0.6), hsla(0, 0%, 8%, 0.5));
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid hsla(0, 0%, 100%, 0.08);
+        }
+
+        .formula-title {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+            margin-bottom: 1rem;
+        }
+
+        .formula-equation {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            color: var(--color-text-primary);
+            margin-bottom: 1rem;
+            text-align: center;
+            letter-spacing: 0.05em;
+        }
+
+        .formula-breakdown {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .calculation-step {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            padding: 0.75rem 1rem;
+            background: hsla(0, 0%, 10%, 0.5);
+            border-radius: 0.5rem;
+            border-left: 3px solid var(--color-text-dim);
+            transition: all 0.3s var(--ease-smooth);
+        }
+
+        .calculation-step.active {
+            border-left-color: var(--color-accent-cyan);
+            background: hsla(195, 100%, 85%, 0.08);
+            color: var(--color-text-primary);
+        }
+
+        .calculation-step .step-label {
+            color: var(--color-text-tertiary);
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .calculation-step .step-value {
+            color: var(--color-accent-cyan);
+            font-weight: 700;
+        }
+
+        /* Sequence Chart */
+        .sequence-chart {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, hsla(0, 0%, 12%, 0.6), hsla(0, 0%, 8%, 0.5));
+            border-radius: 0.75rem;
+            border: 1px solid hsla(0, 0%, 100%, 0.08);
+            min-height: 250px;
+        }
+
+        .chart-title {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 180px;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+            padding: 2rem 0 1rem 0;
+            border-bottom: 2px solid hsla(0, 0%, 100%, 0.15);
+            overflow-x: auto;
+        }
+
+        .chart-bar-wrapper {
+            flex: 0 0 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-bar {
+            width: 100%;
+            background: linear-gradient(180deg, var(--color-accent-cyan) 0%, hsl(195, 100%, 70%) 100%);
+            border-radius: 4px 4px 0 0;
+            transition: all 0.5s var(--ease-bounce);
+            position: relative;
+            min-height: 4px;
+            box-shadow: 0 0 12px hsla(195, 100%, 85%, 0.4);
+        }
+
+        .chart-bar:hover {
+            transform: scaleY(1.05);
+            box-shadow: 0 0 20px hsla(195, 100%, 85%, 0.6);
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.625rem;
+            color: var(--color-text-primary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .bar-index {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.625rem;
+            color: var(--color-text-tertiary);
+            margin-top: 0.5rem;
+        }
+
+        .chart-container::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .chart-container::-webkit-scrollbar-track {
+            background: hsl(0, 0%, 10%);
+            border-radius: 3px;
+        }
+
+        .chart-container::-webkit-scrollbar-thumb {
+            background: hsl(0, 0%, 25%);
+            border-radius: 3px;
+        }
+
+        .chart-container::-webkit-scrollbar-thumb:hover {
+            background: hsl(0, 0%, 35%);
+        }
+
+        /* ============================================
+           RIGHT PANEL - SYSTEM STATE
+           ============================================ */
+        .system-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Instruction Memory */
+        .code-panel {
+            display: flex;
+            flex-direction: column;
+            border-radius: 1rem;
+            overflow: hidden;
+            height: 480px;
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.15s backwards;
+        }
+
+        .code-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid hsla(0, 0%, 100%, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, hsla(0, 0%, 15%, 0.6), hsla(0, 0%, 10%, 0.5));
+        }
+
+        .code-header-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--color-text-tertiary);
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .window-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .window-dots .dot-red {
+            background: hsl(0, 70%, 60%);
+        }
+
+        .window-dots .dot-yellow {
+            background: hsl(45, 90%, 60%);
+        }
+
+        .window-dots .dot-green {
+            background: hsl(120, 50%, 55%);
+        }
+
+        .code-content {
+            flex: 1;
+            overflow-y: auto;
+            background: linear-gradient(135deg, hsl(0, 0%, 8%) 0%, hsl(0, 0%, 6%) 100%);
+            padding: 0.5rem;
+        }
+
+        .code-line {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.8;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            color: var(--color-text-secondary);
+            transition: all 0.2s var(--ease-smooth);
+            border-left: 3px solid transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .code-line.highlight {
+            background: linear-gradient(90deg, hsla(0, 0%, 100%, 0.12) 0%, transparent 100%);
+            border-left-color: var(--color-text-primary);
+            color: var(--color-text-primary);
+            box-shadow: 0 0 16px hsla(0, 0%, 100%, 0.15);
+        }
+
+        /* Custom Scrollbar */
+        .code-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .code-content::-webkit-scrollbar-track {
+            background: hsl(0, 0%, 10%);
+        }
+
+        .code-content::-webkit-scrollbar-thumb {
+            background: hsl(0, 0%, 25%);
+            border-radius: 4px;
+        }
+
+        .code-content::-webkit-scrollbar-thumb:hover {
+            background: hsl(0, 0%, 35%);
+        }
+
+        /* Data Path Monitor */
+        .monitor-panel {
+            padding: 1.5rem;
+            border-top: 2px solid hsla(0, 0%, 100%, 0.2);
+            animation: fadeInUp 0.8s var(--ease-smooth) 0.25s backwards;
+        }
+
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        /* FSM State Indicator */
+        .fsm-state {
+            grid-column: 1 / -1;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .fsm-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+        }
+
+        .tick-indicators {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tick {
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: hsl(0, 0%, 20%);
+            color: var(--color-text-dim);
+            transition: all 0.3s var(--ease-bounce);
+        }
+
+        .tick.active {
+            background: linear-gradient(135deg, hsl(0, 0%, 100%), hsl(0, 0%, 85%));
+            color: hsl(0, 0%, 10%);
+            font-weight: 700;
+            box-shadow: 0 0 16px hsla(0, 0%, 100%, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* Register Display */
+        .register {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .register-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+        }
+
+        .register-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .register-value.pc {
+            color: var(--color-text-primary);
+        }
+
+        .register-value.instr {
+            color: var(--color-text-secondary);
+        }
+
+        .register-value.r0 {
+            color: var(--color-text-primary);
+        }
+
+        .register-value.r1 {
+            color: var(--color-text-primary);
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        .footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid hsla(0, 0%, 100%, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-tertiary);
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+           ============================================ */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-output {
+                text-align: center;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .monitor-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container glass">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <h1>x72 Processor FPGA Hardware Simulation</h1>
+                <p class="header-subtitle">Scaled Triangular Numbers Sequence</p>
+            </div>
+            <div class="header-output">
+                <div class="header-output-label">Current Output (HEX0-HEX4)</div>
+                <div id="current-value-display" class="header-output-value">0</div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="content">
+
+            <!-- Left Panel: FPGA Visuals -->
+            <section class="fpga-panel">
+
+                <!-- 7-Segment Display -->
+                <div class="display-container glass-nested">
+                    <div class="hex-displays" id="hex-container">
+                        <!-- HEX displays injected here -->
+                    </div>
+                    <div class="hex-labels">
+                        <span>HEX5(TICK)</span>
+                        <span>HEX4</span>
+                        <span>HEX3</span>
+                        <span>HEX2</span>
+                        <span>HEX1</span>
+                        <span>HEX0</span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="controls">
+                    <button id="btn-step" class="btn btn-step">Step (KEY1)</button>
+                    <button id="btn-run" class="btn btn-run">Run Program</button>
+                    <button id="btn-reset" class="btn btn-reset">Reset (KEY0)</button>
+                </div>
+
+                <!-- Speed Slider -->
+                <div class="speed-control glass-nested">
+                    <span class="speed-label">Clock Speed</span>
+                    <div class="slider-container">
+                        <span>Slow</span>
+                        <input type="range" id="speed-slider" min="100" max="2000" value="500">
+                        <span>Fast</span>
+                    </div>
+                    <span id="speed-val" class="speed-value">0.5s</span>
+                </div>
+
+                <!-- Visualization Panel -->
+                <div class="visualization-panel glass-nested">
+                    <div class="viz-header">Sequence Progression</div>
+
+                    <!-- Formula Display -->
+                    <div class="formula-display">
+                        <div class="formula-title">Triangular Number Formula</div>
+                        <div class="formula-equation">S(n) = [n × (n+1) ÷ 2] × 10</div>
+                        <div class="formula-breakdown">
+                            <div id="step-1" class="calculation-step">
+                                <span class="step-label">Step 1</span>
+                                <span>n = <span class="step-value" id="val-n">1</span></span>
+                            </div>
+                            <div id="step-2" class="calculation-step">
+                                <span class="step-label">Step 2</span>
+                                <span>n × (n+1) ÷ 2 = <span class="step-value" id="val-tri">1</span></span>
+                            </div>
+                            <div id="step-3" class="calculation-step">
+                                <span class="step-label">Step 3</span>
+                                <span>Result × 10 = <span class="step-value" id="val-result">10</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sequence Chart -->
+                    <div class="sequence-chart">
+                        <div class="chart-title">Value Growth Chart</div>
+                        <div class="chart-container" id="chart-container">
+                            <!-- Chart bars injected here -->
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Right Panel: System State -->
+            <aside class="system-panel">
+
+                <!-- Instruction Memory View -->
+                <div class="code-panel glass-nested">
+                    <div class="code-header">
+                        <span class="code-header-label">Instruction Memory</span>
+                        <div class="window-dots">
+                            <span class="dot-red"></span>
+                            <span class="dot-yellow"></span>
+                            <span class="dot-green"></span>
+                        </div>
+                    </div>
+                    <div class="code-content" id="code-container">
+                        <div id="assembly-code">
+                            <!-- Code lines injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Path Monitor -->
+                <div class="monitor-panel glass-nested">
+                    <div class="monitor-grid">
+
+                        <!-- FSM State Indicator -->
+                        <div class="fsm-state glass-nested">
+                            <span class="fsm-label">FSM State</span>
+                            <div class="tick-indicators">
+                                <span id="tick-1" class="tick">T1</span>
+                                <span id="tick-2" class="tick">T2</span>
+                                <span id="tick-3" class="tick">T3</span>
+                                <span id="tick-4" class="tick">T4</span>
+                            </div>
+                        </div>
+
+                        <!-- Registers -->
+                        <div class="register">
+                            <span class="register-label">PC (Addr)</span>
+                            <span id="pc-val" class="register-value pc">0000</span>
+                        </div>
+                        <div class="register">
+                            <span class="register-label">Instruction</span>
+                            <span id="instr-val" class="register-value instr">NOP</span>
+                        </div>
+                        <div class="register">
+                            <span class="register-label">R0 (Index n)</span>
+                            <span id="r0-val" class="register-value r0">0</span>
+                        </div>
+                        <div class="register">
+                            <span class="register-label">R1 (Value)</span>
+                            <span id="r1-val" class="register-value r1">0</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>Nicholas Choong Chen Juin</span>
+            <span>x72 FPGA Simulation</span>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            // 7-segment hex definitions (0-9, blank, minus)
+            const SEGMENTS = {
+                0: [1, 1, 1, 1, 1, 1, 0], 1: [0, 1, 1, 0, 0, 0, 0],
+                2: [1, 1, 0, 1, 1, 0, 1], 3: [1, 1, 1, 1, 0, 0, 1],
+                4: [0, 1, 1, 0, 0, 1, 1], 5: [1, 0, 1, 1, 0, 1, 1],
+                6: [1, 0, 1, 1, 1, 1, 1], 7: [1, 1, 1, 0, 0, 0, 0],
+                8: [1, 1, 1, 1, 1, 1, 1], 9: [1, 1, 1, 1, 0, 1, 1],
+                '-': [0, 0, 0, 0, 0, 0, 1], ' ': [0, 0, 0, 0, 0, 0, 0]
+            };
+
+            // Triangular sequence S(n) = [n(n+1)/2] * 10
+            const assemblyLines = [
+                { pc: 0, text: "start: movi R0, 1   // Init n=1" },
+                { pc: 2, text: "loop:  movi R1, 0   // Clear Acc" },
+                { pc: 4, text: "       add R1, R0   // Acc += n" },
+                { pc: 6, text: "       movi R2, 1   // R2 = 1 (Denominator for Div/2)" },
+                { pc: 8, text: "       add R2, R0   // R2 = n+1" },
+                { pc: 10, text: "       mul R1, R2   // Acc = n*(n+1)" },
+                { pc: 12, text: "       ssi R1, -1   // Acc >> 1 (Acc / 2)" },
+                { pc: 14, text: "       mul R1, 10   // Scale by 10" },
+                { pc: 16, text: "       disp R1      // Show Result" },
+                { pc: 18, text: "       addi R0, 1   // n++" },
+                { pc: 20, text: "       bez R7, loop // Loop back to PC 2" }
+            ];
+
+            // System Registers (Simplified)
+            let state = {
+                pc: 0,
+                n: 1,
+                acc: 0,
+                r0: 1,
+                r1: 0,
+                r2: 0,
+                r7: 0,
+                seqIndex: 0,
+                lineIndex: 0,
+                tick: 1, // Current FSM tick (1 to 4)
+                isRunning: false,
+                isReset: true
+            };
+
+            let chartHistory = []; // Store chart values
+            let runInterval;
+            const initialDelay = 500; // Default slider value
+            let currentDelay = initialDelay;
+
+            function init() {
+                renderHardware();
+                // Set initial state based on assembly
+                state.r0 = assemblyLines[0].text.includes("movi R0, 1") ? 1 : 0;
+                reset();
+
+                // Event Listeners
+                document.getElementById('btn-step').addEventListener('click', () => {
+                    // If running, stop first, then step once
+                    if (state.isRunning) toggleRun();
+                    stepClock();
+                });
+                document.getElementById('btn-run').addEventListener('click', toggleRun);
+                document.getElementById('btn-reset').addEventListener('click', reset);
+
+                // Speed slider update
+                const speedSlider = document.getElementById('speed-slider');
+                speedSlider.addEventListener('input', (e) => {
+                    // Invert the slider value (10=slow, 2000=fast) to get delay
+                    currentDelay = 2100 - parseInt(e.target.value);
+                    document.getElementById('speed-val').innerText = (currentDelay / 1000).toFixed(1) + 's';
+
+                    // If running, restart the interval with the new delay
+                    if (state.isRunning) {
+                        toggleRun(); // Stop
+                        toggleRun(); // Start with new delay
+                    }
+                });
+                document.getElementById('speed-val').innerText = (initialDelay / 1000).toFixed(1) + 's';
+            }
+
+            function renderHardware() {
+                // Renders 7-segments
+                const hexContainer = document.getElementById('hex-container');
+                // HEX5 (Tick) down to HEX0
+                for (let i = 5; i >= 0; i--) {
+                    const el = document.createElement('div');
+                    el.className = 'seven-segment';
+                    el.id = `hex-${i}`;
+                    el.innerHTML = `
+                    <div class="segment seg-a"></div><div class="segment seg-b"></div>
+                    <div class="segment seg-c"></div><div class="segment seg-d"></div>
+                    <div class="segment seg-e"></div><div class="segment seg-f"></div>
+                    <div class="segment seg-g"></div>`;
+                    hexContainer.appendChild(el);
+                }
+
+                const codeContainer = document.getElementById('assembly-code');
+                assemblyLines.forEach((line, index) => {
+                    const div = document.createElement('div');
+                    div.id = `line-${index}`;
+                    div.innerText = line.text;
+                    div.className = "code-line";
+                    codeContainer.appendChild(div);
+                });
+            }
+
+            // Core Logic: Simulates the 4-tick cycle per instruction
+            function stepClock() {
+                state.isReset = false;
+
+                // 1. VISUALIZATION & FETCH (T1)
+                updateTickUI(state.tick);
+                updateTickHexDisplay(state.tick); // NEW: Display tick on HEX5
+
+                const currentLine = assemblyLines[state.lineIndex];
+                updateStateUI(currentLine);
+                highlightLine(state.lineIndex);
+
+                // 2. EXECUTION & ADVANCE (T2, T3, T4 logic)
+                if (state.tick === 4) {
+                    // T4: Writeback and PC increment
+                    advanceLogic();
+                    state.tick = 1; // Start T1 for next instruction
+                } else {
+                    state.tick++; // Advance FSM Tick
+                }
+            }
+
+            function advanceLogic() {
+                // Execute the result of the instruction at the end of T4
+                const lineIdx = state.lineIndex;
+                let nextLineIndex = lineIdx + 1;
+
+                // Simulated Instruction Execution (Simplified to result only)
+                const instr = assemblyLines[lineIdx].text.split(':')[1] || assemblyLines[lineIdx].text;
+
+                if (instr.includes("movi R0, 1")) {
+                    state.r0 = 1;
+                    state.n = 1;
+                } else if (instr.includes("movi R1, 0")) {
+                    state.r1 = 0;
+                } else if (instr.includes("add R1, R0")) {
+                    state.r1 += state.r0;
+                } else if (instr.includes("movi R2, 1")) {
+                    state.r2 = 1;
+                } else if (instr.includes("add R2, R0")) {
+                    state.r2 = state.r0 + 1;
+                } else if (instr.includes("mul R1, R2")) {
+                    state.r1 *= state.r2;
+                } else if (instr.includes("ssi R1, -1")) {
+                    state.r1 = Math.floor(state.r1 / 2);
+                } else if (instr.includes("mul R1, 10")) {
+                    state.r1 *= 10;
+                } else if (instr.includes("disp R1")) {
+                    // Output phase: The computed triangular number is in R1
+                    updateMainDisplay(state.r1);
+                    updateFormulaDisplay();
+                    addToChart(state.r1, state.n);
+                    state.seqIndex++;
+                } else if (instr.includes("addi R0, 1")) {
+                    state.r0++;
+                    state.n++;
+                } else if (instr.includes("bez R7, loop")) {
+                    if (state.r7 === 0) {
+                        nextLineIndex = 1; // Index 1 is the 'loop:' label line
+                    }
+                }
+
+                // Update PC based on next instruction (unless it was a branch)
+                state.lineIndex = nextLineIndex;
+                state.pc = assemblyLines[state.lineIndex].pc;
+            }
+
+            function updateTickUI(tick) {
+                // Reset all visual indicators
+                for (let i = 1; i <= 4; i++) {
+                    const el = document.getElementById(`tick-${i}`);
+                    el.classList.remove('active');
+                }
+                // Highlight current indicator
+                const active = document.getElementById(`tick-${tick}`);
+                active.classList.add('active');
+            }
+
+            // NEW: Function to display the tick on HEX5
+            function updateTickHexDisplay(tickValue) {
+                // HEX5 is used to display the current tick (1, 2, 3, or 4)
+                setHex(5, tickValue);
+            }
+
+            function updateStateUI(line) {
+                document.getElementById('pc-val').innerText = line.pc.toString(16).toUpperCase().padStart(4, '0');
+                document.getElementById('instr-val').innerText = (line.text.split('//')[0] || "NOP").trim().split(/\s+/)[0]; // Extract opcode
+                document.getElementById('r0-val').innerText = state.r0;
+                document.getElementById('r1-val').innerText = state.r1;
+            }
+
+            function highlightLine(index) {
+                // Remove old highlights
+                document.querySelectorAll('#assembly-code > div').forEach(d => {
+                    d.classList.remove('highlight');
+                });
+
+                // Add new highlight
+                const el = document.getElementById(`line-${index}`);
+                if (el) {
+                    el.classList.add('highlight');
+
+                    // FIX: Use container scroll within the element
+                    const container = document.getElementById('code-container');
+                    const offset = el.offsetTop - container.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+                    container.scrollTo({ top: offset, behavior: 'smooth' });
+                }
+            }
+
+            function updateMainDisplay(value) {
+                document.getElementById('current-value-display').innerText = value;
+                let str = Math.abs(value).toString();
+                let isNeg = value < 0;
+
+                // Clear HEX0-HEX4
+                for (let i = 0; i <= 4; i++) setHex(i, ' ');
+
+                // Set digits for HEX0-HEX4 (Max 5 digits for 16-bit number: -32768 to 32767)
+                // Index 0 is the least significant digit (HEX0)
+                for (let i = 0; i < str.length && i <= 4; i++) {
+                    setHex(i, parseInt(str[str.length - 1 - i]));
+                }
+                // Set negative sign on HEX4 if necessary and space allows
+                if (isNeg && str.length <= 4) setHex(4, '-');
+                else if (isNeg && str.length === 5) {
+                    // Cannot display 5 digits + sign, display max positive value
+                    document.getElementById('current-value-display').innerText = ">99999";
+                }
+            }
+
+            function updateFormulaDisplay() {
+                const n = state.n;
+                const tri = Math.floor(n * (n + 1) / 2);
+                const result = tri * 10;
+
+                document.getElementById('val-n').innerText = n;
+                document.getElementById('val-tri').innerText = tri;
+                document.getElementById('val-result').innerText = result;
+
+                // Highlight steps sequentially
+                ['step-1', 'step-2', 'step-3'].forEach((id, index) => {
+                    setTimeout(() => {
+                        const el = document.getElementById(id);
+                        el.classList.add('active');
+                        setTimeout(() => el.classList.remove('active'), 600);
+                    }, index * 300);
+                });
+            }
+
+            function addToChart(value, n) {
+                chartHistory.push({ value, n });
+                renderChart();
+            }
+
+            function renderChart() {
+                const container = document.getElementById('chart-container');
+                container.innerHTML = ''; // Clear existing bars
+
+                const maxValue = Math.max(...chartHistory.map(d => d.value), 1);
+
+                chartHistory.forEach((data, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'chart-bar-wrapper';
+
+                    const bar = document.createElement('div');
+                    bar.className = 'chart-bar';
+                    const maxHeight = 150; // Max height in pixels
+                    const heightPx = (data.value / maxValue) * maxHeight;
+                    bar.style.height = `${heightPx}px`;
+
+                    const valueLabel = document.createElement('div');
+                    valueLabel.className = 'bar-value';
+                    valueLabel.innerText = data.value;
+
+                    const indexLabel = document.createElement('div');
+                    indexLabel.className = 'bar-index';
+                    indexLabel.innerText = `n=${data.n}`;
+
+                    bar.appendChild(valueLabel);
+                    wrapper.appendChild(bar);
+                    wrapper.appendChild(indexLabel);
+                    container.appendChild(wrapper);
+                });
+
+                // Auto-scroll to the right to show latest value
+                setTimeout(() => {
+                    container.scrollLeft = container.scrollWidth;
+                }, 100);
+            }
+
+            function setHex(index, char) {
+                const hex = document.getElementById(`hex-${index}`);
+                if (!hex) return;
+                // Ensure char is cast to string if it's a number for lookup
+                const map = SEGMENTS[String(char)] || SEGMENTS[' '];
+                const segs = hex.querySelectorAll('.segment');
+                segs.forEach((seg, i) => {
+                    if (map[i]) seg.classList.add('on');
+                    else seg.classList.remove('on');
+                });
+            }
+
+            function toggleRun() {
+                const btn = document.getElementById('btn-run');
+                const stepBtn = document.getElementById('btn-step');
+
+                if (state.isRunning) {
+                    // STOP Logic
+                    clearInterval(runInterval);
+                    runInterval = null; // IMPORTANT: Clear the reference
+                    state.isRunning = false;
+                    btn.innerText = "Run Program";
+                    btn.classList.remove('running');
+                    stepBtn.disabled = false;
+                } else {
+                    // START Logic
+                    state.isRunning = true;
+                    btn.innerText = "Stop Sequence";
+                    btn.classList.add('running');
+                    stepBtn.disabled = true;
+
+                    // Calculate delay (4 Ticks = 1 Instruction)
+                    const delay = currentDelay / 4;
+
+                    // Set the interval to call stepClock repeatedly
+                    runInterval = setInterval(stepClock, delay);
+                }
+            }
+
+            function reset() {
+                if (state.isRunning) toggleRun();
+                state = {
+                    pc: 0, n: 1, acc: 0, r0: 1, r1: 0, r2: 0, r7: 0,
+                    seqIndex: 0, lineIndex: 0, tick: 1,
+                    isRunning: false, isReset: true
+                };
+                chartHistory = []; // Clear chart history
+                document.getElementById('speed-slider').value = 500; // Reset slider position
+                currentDelay = 500;
+                document.getElementById('speed-val').innerText = (currentDelay / 1000).toFixed(1) + 's';
+                updateMainDisplay(0);
+                updateTickHexDisplay(1); // Reset tick display
+                highlightLine(0);
+                updateStateUI(assemblyLines[0]);
+                updateTickUI(1);
+                renderChart(); // Clear chart
+
+                // Reset formula display
+                document.getElementById('val-n').innerText = '1';
+                document.getElementById('val-tri').innerText = '1';
+                document.getElementById('val-result').innerText = '10';
+            }
+
+            // Initialize the simulation on load
+            init();
+
+        })();
+    </script>
+</body>
+
+</html>
